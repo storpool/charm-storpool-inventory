@@ -1,0 +1,4 @@
+options:
+  submit_url:
+    type: string
+    description: The URL to submit the StorPool inventory data to.
