@@ -13,7 +13,10 @@ from charms.reactive import helpers as rhelpers
 
 from charmhelpers.core import hookenv
 
-datafile = '/var/lib/storpool-collect.json'
+from spcharms import repo as sprepo
+
+datadir = '/var/lib/storpool'
+datafile = datadir + '/collect.json'
 
 def rdebug(s):
 	with open('/tmp/storpool-charms.log', 'a') as f:
@@ -58,11 +61,41 @@ def have_config():
 
 @reactive.when('storpool-inventory.collecting')
 @reactive.when_not('storpool-inventory.collected')
+@reactive.when_not('storpool-repo-add.available')
+def waiting_for_repo():
+	hookenv.status_set('maintenance', 'waiting for the StorPool APT repo to be configured')
+	rdebug('no APT repo yet')
+
+@reactive.when('storpool-inventory.collecting')
+@reactive.when_not('storpool-inventory.collected')
+@reactive.when('storpool-repo-add.available')
 def collect():
 	rdebug('about to collect some data, are we not')
 	reactive.remove_state('storpool-inventory.collecting')
-	hookenv.status_set('maintenance', 'collecting data')
 
+	hookenv.status_set('maintenance', 'installing packages for data collection')
+	try:
+		(err, newly_installed) = sprepo.install_packages({
+			'dmidecode': '*',
+			'lshw': '*',
+			'nvme-cli': '*',
+			'pciutils': '*',
+			'usbutils': '*',
+		})
+		if err is not None:
+			raise Exception('{e}'.format(e=err))
+		if newly_installed:
+			rdebug('it seems we installed some new packages: {lst}'.format(lst=' '.join(newly_installed)))
+		else:
+			rdebug('it seems we already had everything we needed')
+		sprepo.record_packages(newly_installed)
+		hookenv.status_set('maintenance', '')
+	except Exception as e:
+		rdebug('could not install the OS packages: {e}'.format(e=e))
+		hookenv.status_set('maintenance', 'failed to install the OS packages')
+		return
+
+	hookenv.status_set('maintenance', 'collecting data')
 	try:
 		with tempfile.TemporaryDirectory(dir='/tmp', prefix='storpool-inventory.') as d:
 			rdebug('created a temporary directory {d}'.format(d=d))
@@ -112,6 +145,8 @@ def collect():
 
 			global datafile
 			rdebug('about to write {df}'.format(df=datafile))
+			if not os.path.isdir(datadir):
+				os.mkdir(datadir, mode=0o700)
 			with open(datafile, mode='w', encoding='latin1') as f:
 				rdebug('about to write to the file')
 				print(data, file=f)
@@ -147,6 +182,7 @@ def try_to_submit():
 		rdebug('erm, how did we get here with no submit URL?')
 		return
 
+	hookenv.status_set('maintenance', 'submitting the collected data')
 	try:
 		global datafile
 		rdebug('about to read {df}'.format(df=datafile))
@@ -164,8 +200,10 @@ def try_to_submit():
 			if code is not None and code >= 200 and code < 300:
 				rdebug('success!')
 				reactive.set_state('storpool-inventory.submitted')
+				hookenv.status_set('active', 'here, have a blob of data')
 	except Exception as e:
 		rdebug('could not submit the data: {e}'.format(e=e))
+		hookenv.status_set('maintenance', 'failed to submit the collected data')
 
 @reactive.hook('update-status')
 def submit_if_needed():
@@ -191,3 +229,13 @@ def recollect_and_resubmit():
 	reactive.set_state('storpool-inventory.submitting')
 	reactive.remove_state('storpool-inventory.submitted')
 	reactive.remove_state('storpool-inventory.configured')
+
+@reactive.hook('stop')
+def stop():
+	rdebug('stop invoked, letting storpool-repo-add know')
+	reactive.set_state('storpool-repo-add.stop')
+	rdebug('and also removing the file with the collected data')
+	try:
+		os.unlink(datafile)
+	except Exception as e:
+		rdebug('could not remove {name}: {e}'.format(name=datafile, e=e))
