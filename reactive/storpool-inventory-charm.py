@@ -120,6 +120,7 @@ def collect():
 	'$p lsblk > lsblk.txt 2>lsblk.err\n' +
 	'$p lspci > lspci.txt 2>lspci.err\n' +
 	'$p lspci -vv > lspci-vv.txt 2>lspci-vv.err\n' +
+	'$p lspci -vvnnqD > lspci-vvnnqD.txt 2>lspci-vvnnqD.err\n' +
 	'$p lshw > lshw.txt 2>lshw.err\n' +
 	'$p lscpu > lscpu.txt 2>lscpu.err\n' +
 	'$p lsmod > lsmod.txt 2>lsmod.err\n' +
