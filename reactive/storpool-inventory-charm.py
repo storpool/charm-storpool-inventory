@@ -127,7 +127,9 @@ def collect():
 	'$p nvme list > nvme-list.txt 2>nvme-list.err\n' +
 	'$p ls -l /dev/disk/by-id > ls-dev-disk-by-id.txt 2>ls-dev-disk-by-id.err\n' +
 	'$p ls -l /dev/disk/by-path > ls-dev-disk-by-path.txt 2>ls-dev-disk-by-path.err\n' +
-	'$p ls -l /sys/class/net > ls-sys-class-net.txt 2>ls-sys-class-net.err\n', end='', file=f)
+	'$p ls -l /sys/class/net > ls-sys-class-net.txt 2>ls-sys-class-net.err\n' +
+	'$p ip address list > ip-address-list.txt 2>ip-address-list.err\n' +
+	'$p ip link list > ip-link-list.txt 2>ip-link-list.err\n', end='', file=f)
 			os.chmod(collect_script, 0o700)
 			rdebug('running the collect script'.format(cs=collect_script))
 			subprocess.call(['sh', '-c', "{cs} > '{w}/collect.txt' 2>'{w}/collect.err'".format(cs=collect_script, w=workdir)])
