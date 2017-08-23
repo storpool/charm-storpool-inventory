@@ -61,14 +61,6 @@ def have_config():
 
 @reactive.when('storpool-inventory.collecting')
 @reactive.when_not('storpool-inventory.collected')
-@reactive.when_not('storpool-repo-add.available')
-def waiting_for_repo():
-	hookenv.status_set('maintenance', 'waiting for the StorPool APT repo to be configured')
-	rdebug('no APT repo yet')
-
-@reactive.when('storpool-inventory.collecting')
-@reactive.when_not('storpool-inventory.collected')
-@reactive.when('storpool-repo-add.available')
 def collect():
 	rdebug('about to collect some data, are we not')
 	reactive.remove_state('storpool-inventory.collecting')
@@ -88,7 +80,7 @@ def collect():
 			rdebug('it seems we installed some new packages: {lst}'.format(lst=' '.join(newly_installed)))
 		else:
 			rdebug('it seems we already had everything we needed')
-		sprepo.record_packages(newly_installed)
+		sprepo.record_packages('storpool-inventory-charm', newly_installed)
 		hookenv.status_set('maintenance', '')
 	except Exception as e:
 		rdebug('could not install the OS packages: {e}'.format(e=e))
@@ -235,10 +227,11 @@ def recollect_and_resubmit():
 
 @reactive.hook('stop')
 def stop():
-	rdebug('stop invoked, letting storpool-repo-add know')
-	reactive.set_state('storpool-repo-add.stop')
 	rdebug('and also removing the file with the collected data')
 	try:
 		os.unlink(datafile)
 	except Exception as e:
 		rdebug('could not remove {name}: {e}'.format(name=datafile, e=e))
+
+	rdebug('uninstalling any inventory-related packages')
+	sprepo.unrecord_packages('storpool-inventory-charm')
