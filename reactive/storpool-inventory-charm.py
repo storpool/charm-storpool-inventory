@@ -14,13 +14,13 @@ from charms.reactive import helpers as rhelpers
 from charmhelpers.core import hookenv
 
 from spcharms import repo as sprepo
+from spcharms import utils as sputils
 
 datadir = '/var/lib/storpool'
 datafile = datadir + '/collect.json'
 
 def rdebug(s):
-	with open('/tmp/storpool-charms.log', 'a') as f:
-		print('{tm} [inventory-charm] {s}'.format(tm=time.ctime(), s=s), file=f)
+	sputils.rdebug(s, prefix='inventory-charm')
 
 @reactive.hook('install')
 def first_install():
