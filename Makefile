@@ -4,6 +4,7 @@ NAME?=		storpool-inventory
 SERIES?=	xenial
 
 SRCS=		\
+		config.yaml \
 		layer.yaml \
 		metadata.yaml \
 		\
