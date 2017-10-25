@@ -1,1 +1,2 @@
+repo: https://github.com/storpool/charm-storpool-inventory.git
 includes: ['layer:basic', 'layer:storpool-helper']
