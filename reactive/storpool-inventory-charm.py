@@ -18,8 +18,10 @@ from spcharms import utils as sputils
 datadir = '/var/lib/storpool'
 datafile = datadir + '/collect.json'
 
+
 def rdebug(s):
     sputils.rdebug(s, prefix='inventory-charm')
+
 
 @reactive.hook('install')
 def first_install():
@@ -29,6 +31,7 @@ def first_install():
     reactive.set_state('storpool-inventory.submitting')
     reactive.remove_state('storpool-inventory.submitted')
     hookenv.status_set('maintenance', 'setting up')
+
 
 @reactive.hook('config-changed')
 def have_config():
@@ -57,6 +60,7 @@ def have_config():
         reactive.remove_state('storpool-inventory.submitting')
         reactive.remove_state('storpool-inventory.submitted')
         hookenv.status_set('maintenance', 'waiting for configuration')
+
 
 @reactive.when('storpool-inventory.collecting')
 @reactive.when_not('storpool-inventory.collected')
@@ -156,12 +160,14 @@ def collect():
         rdebug('something bad happened: {e}'.format(e=e))
         hookenv.status_set('maintenance', 'failed to collect the data')
 
+
 @reactive.when_not('storpool-inventory.configured')
 @reactive.when('storpool-inventory.collected')
 @reactive.when('storpool-inventory.submitting')
 @reactive.when_not('storpool-inventory.submitted')
 def nowhere_to_submit_to():
     rdebug('collected some data, but nowhere to submit it to')
+
 
 @reactive.when('storpool-inventory.configured')
 @reactive.when('storpool-inventory.collected')
@@ -199,6 +205,7 @@ def try_to_submit():
         rdebug('could not submit the data: {e}'.format(e=e))
         hookenv.status_set('maintenance', 'failed to submit the collected data')
 
+
 @reactive.hook('update-status')
 def submit_if_needed():
     rdebug('update-status invoked')
@@ -215,6 +222,7 @@ def submit_if_needed():
     else:
         rdebug('already submitted!')
 
+
 @reactive.hook('upgrade-charm')
 def recollect_and_resubmit():
     rdebug('upgrade-charm invoked, resetting all the flags')
@@ -223,6 +231,7 @@ def recollect_and_resubmit():
     reactive.set_state('storpool-inventory.submitting')
     reactive.remove_state('storpool-inventory.submitted')
     reactive.remove_state('storpool-inventory.configured')
+
 
 @reactive.hook('stop')
 def stop():
