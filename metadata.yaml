@@ -4,3 +4,5 @@ maintainer: StorPool <support@storpool.com>
 description: |
   This charm collects some information about the MAAS node that it is
   running on.
+tags:
+  - ops
