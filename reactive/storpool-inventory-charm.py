@@ -5,7 +5,6 @@ import os
 import platform
 import subprocess
 import tempfile
-import time
 import urllib.request
 
 from charms import reactive
