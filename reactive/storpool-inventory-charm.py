@@ -17,6 +17,27 @@ from spcharms import utils as sputils
 
 datadir = '/var/lib/storpool'
 datafile = datadir + '/collect.json'
+collect_commands = """#!/bin/bash
+
+cd {w} || exit 1
+[[ $UID -ne 0 ]] && p=sudo
+
+$p dmidecode > dmidecode.txt 2>dmidecode.err
+$p free -m > free-m.txt 2>free-m.err
+$p lsblk > lsblk.txt 2>lsblk.err
+$p lspci > lspci.txt 2>lspci.err
+$p lspci -vv > lspci-vv.txt 2>lspci-vv.err
+$p lspci -vvnnqD > lspci-vvnnqD.txt 2>lspci-vvnnqD.err
+$p lshw > lshw.txt 2>lshw.err
+$p lscpu > lscpu.txt 2>lscpu.err
+$p lsmod > lsmod.txt 2>lsmod.err
+$p nvme list > nvme-list.txt 2>nvme-list.err
+$p ls -l /dev/disk/by-id > ls-dev-disk-by-id.txt 2>ls-dev-disk-by-id.err
+$p ls -l /dev/disk/by-path > ls-dev-disk-by-path.txt 2>ls-dev-disk-by-path.err
+$p ls -l /sys/class/net > ls-sys-class-net.txt 2>ls-sys-class-net.err
+$p ip address list > ip-address-list.txt 2>ip-address-list.err
+$p ip link list > ip-link-list.txt 2>ip-link-list.err
+"""
 
 
 def rdebug(s):
@@ -107,24 +128,7 @@ def collect():
 
             collect_script = workdir + '/collect.sh'
             with open(collect_script, mode='w') as f:
-                print('#!/bin/bash\n' +
-    'cd {w} || exit 1\n'.format(w=workdir) +
-    '[[ $UID -ne 0 ]] && p=sudo\n' +
-    '$p dmidecode > dmidecode.txt 2>dmidecode.err\n' +
-    '$p free -m > free-m.txt 2>free-m.err\n' +
-    '$p lsblk > lsblk.txt 2>lsblk.err\n' +
-    '$p lspci > lspci.txt 2>lspci.err\n' +
-    '$p lspci -vv > lspci-vv.txt 2>lspci-vv.err\n' +
-    '$p lspci -vvnnqD > lspci-vvnnqD.txt 2>lspci-vvnnqD.err\n' +
-    '$p lshw > lshw.txt 2>lshw.err\n' +
-    '$p lscpu > lscpu.txt 2>lscpu.err\n' +
-    '$p lsmod > lsmod.txt 2>lsmod.err\n' +
-    '$p nvme list > nvme-list.txt 2>nvme-list.err\n' +
-    '$p ls -l /dev/disk/by-id > ls-dev-disk-by-id.txt 2>ls-dev-disk-by-id.err\n' +
-    '$p ls -l /dev/disk/by-path > ls-dev-disk-by-path.txt 2>ls-dev-disk-by-path.err\n' +
-    '$p ls -l /sys/class/net > ls-sys-class-net.txt 2>ls-sys-class-net.err\n' +
-    '$p ip address list > ip-address-list.txt 2>ip-address-list.err\n' +
-    '$p ip link list > ip-link-list.txt 2>ip-link-list.err\n', end='', file=f)
+                print(collect_commands.format(w=workdir), end='', file=f)
             os.chmod(collect_script, 0o700)
             rdebug('running the collect script'.format(cs=collect_script))
             subprocess.call(['sh', '-c', "{cs} > '{w}/collect.txt' 2>'{w}/collect.err'".format(cs=collect_script, w=workdir)])
