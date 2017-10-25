@@ -1,3 +1,8 @@
+"""
+A Juju charm that collects system information and sends it to the StorPool
+`inventory-server` application.
+"""
+
 from __future__ import print_function
 
 import json
@@ -41,11 +46,17 @@ $p ip link list > ip-link-list.txt 2>ip-link-list.err
 
 
 def rdebug(s):
+    """
+    Pass the diagnostic message string `s` to the central diagnostic logger.
+    """
     sputils.rdebug(s, prefix='inventory-charm')
 
 
 @reactive.hook('install')
 def first_install():
+    """
+    On initial installation, note that we need to collect and submit the data.
+    """
     rdebug('install invoked, triggering both a recollection and '
            'a resubmission')
     reactive.set_state('storpool-inventory.collecting')
@@ -57,6 +68,10 @@ def first_install():
 
 @reactive.hook('config-changed')
 def have_config():
+    """
+    Check whether the `submit_url` configuration parameter has been set or
+    changed; if so, trigger a collect-and-submit cycle.
+    """
     rdebug('config-changed')
     config = hookenv.config()
 
@@ -92,6 +107,10 @@ def have_config():
 @reactive.when('storpool-inventory.collecting')
 @reactive.when_not('storpool-inventory.collected')
 def collect():
+    """
+    Generate and run a shell script invoking various system tools to
+    collect some information.
+    """
     rdebug('about to collect some data, are we not')
     reactive.remove_state('storpool-inventory.collecting')
 
@@ -188,6 +207,9 @@ def collect():
 @reactive.when('storpool-inventory.submitting')
 @reactive.when_not('storpool-inventory.submitted')
 def nowhere_to_submit_to():
+    """
+    Note that we still need the `submit_url` parameter to be set.
+    """
     rdebug('collected some data, but nowhere to submit it to')
 
 
@@ -196,6 +218,9 @@ def nowhere_to_submit_to():
 @reactive.when('storpool-inventory.submitting')
 @reactive.when_not('storpool-inventory.submitted')
 def try_to_submit():
+    """
+    Once the data has been collected and `submit_url` is set, go ahead.
+    """
     url = hookenv.config().get('submit_url', None)
     rdebug('trying to submit to {url}'.format(url=url))
     reactive.remove_state('storpool-inventory.submitting')
@@ -234,6 +259,9 @@ def try_to_submit():
 
 @reactive.hook('update-status')
 def submit_if_needed():
+    """
+    Retry collecting and/or submitting the data if the last attempt failed.
+    """
     rdebug('update-status invoked')
 
     if not rhelpers.is_state('storpool-inventory.collected'):
@@ -251,6 +279,9 @@ def submit_if_needed():
 
 @reactive.hook('upgrade-charm')
 def recollect_and_resubmit():
+    """
+    On charm upgrade, note that we need to collect and submit the data.
+    """
     rdebug('upgrade-charm invoked, resetting all the flags')
     reactive.set_state('storpool-inventory.collecting')
     reactive.remove_state('storpool-inventory.collected')
@@ -261,6 +292,9 @@ def recollect_and_resubmit():
 
 @reactive.hook('stop')
 def stop():
+    """
+    Clean up upon unit removal.
+    """
     rdebug('and also removing the file with the collected data')
     try:
         os.unlink(datafile)
