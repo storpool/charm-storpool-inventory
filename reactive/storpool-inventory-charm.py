@@ -46,7 +46,8 @@ def rdebug(s):
 
 @reactive.hook('install')
 def first_install():
-    rdebug('install invoked, triggering both a recollection and a resubmission')
+    rdebug('install invoked, triggering both a recollection and '
+           'a resubmission')
     reactive.set_state('storpool-inventory.collecting')
     reactive.remove_state('storpool-inventory.collected')
     reactive.set_state('storpool-inventory.submitting')
@@ -61,18 +62,23 @@ def have_config():
 
     url = config.get('submit_url', None)
     if url is not None:
-        if config.changed('submit_url') or not rhelpers.is_state('storpool-inventory.configured'):
+        if config.changed('submit_url') or \
+           not rhelpers.is_state('storpool-inventory.configured'):
             reactive.set_state('storpool-inventory.configured')
-            rdebug('we have a new submission URL address: {url}'.format(url=url))
+            rdebug('we have a new submission URL address: {url}'
+                   .format(url=url))
             reactive.set_state('storpool-inventory.submitting')
             reactive.remove_state('storpool-inventory.submitted')
 
-            if not rhelpers.is_state('storpool-inventory.collected') and not rhelpers.is_state('storpool-inventory.collecting'):
+            if not rhelpers.is_state('storpool-inventory.collected') and \
+               not rhelpers.is_state('storpool-inventory.collecting'):
                 rdebug('triggering another collection attempt')
-                hookenv.status_set('maintenance', 'about to try to collect data again')
+                hookenv.status_set('maintenance',
+                                   'about to try to collect data again')
                 reactive.set_state('storpool-inventory.collecting')
             else:
-                hookenv.status_set('maintenance', 'about to resubmit any collected data')
+                hookenv.status_set('maintenance',
+                                   'about to resubmit any collected data')
         else:
             rdebug('the submission URL address seems to be the same as before')
     else:
@@ -89,7 +95,8 @@ def collect():
     rdebug('about to collect some data, are we not')
     reactive.remove_state('storpool-inventory.collecting')
 
-    hookenv.status_set('maintenance', 'installing packages for data collection')
+    hookenv.status_set('maintenance',
+                       'installing packages for data collection')
     try:
         (err, newly_installed) = sprepo.install_packages({
             'dmidecode': '*',
@@ -101,7 +108,8 @@ def collect():
         if err is not None:
             raise Exception('{e}'.format(e=err))
         if newly_installed:
-            rdebug('it seems we installed some new packages: {lst}'.format(lst=' '.join(newly_installed)))
+            rdebug('it seems we installed some new packages: {lst}'
+                   .format(lst=' '.join(newly_installed)))
         else:
             rdebug('it seems we already had everything we needed')
         sprepo.record_packages('storpool-inventory-charm', newly_installed)
@@ -113,7 +121,8 @@ def collect():
 
     hookenv.status_set('maintenance', 'collecting data')
     try:
-        with tempfile.TemporaryDirectory(dir='/tmp', prefix='storpool-inventory.') as d:
+        with tempfile.TemporaryDirectory(dir='/tmp',
+                                         prefix='storpool-inventory.') as d:
             rdebug('created a temporary directory {d}'.format(d=d))
 
             """
@@ -131,7 +140,12 @@ def collect():
                 print(collect_commands.format(w=workdir), end='', file=f)
             os.chmod(collect_script, 0o700)
             rdebug('running the collect script'.format(cs=collect_script))
-            subprocess.call(['sh', '-c', "{cs} > '{w}/collect.txt' 2>'{w}/collect.err'".format(cs=collect_script, w=workdir)])
+            subprocess.call([
+                             'sh',
+                             '-c',
+                             "{cs} > '{w}/collect.txt' 2>'{w}/collect.err'"
+                             .format(cs=collect_script, w=workdir)
+                            ])
 
             collected = {}
             rdebug('scanning the {w} directory now'.format(w=workdir))
@@ -139,11 +153,14 @@ def collect():
                 if not e.is_file():
                     continue
                 rdebug('- {name}'.format(name=e.name))
-                with open(workdir + '/' + e.name, mode='r', encoding='latin1') as f:
+                with open(workdir + '/' + e.name, mode='r',
+                          encoding='latin1') as f:
                     collected[e.name] = ''.join(f.readlines())
-            rdebug('collected {ln} entries: {ks}'.format(ln=len(collected), ks=sorted(collected.keys())))
+            rdebug('collected {ln} entries: {ks}'
+                   .format(ln=len(collected), ks=sorted(collected.keys())))
             data = json.dumps(collected)
-            rdebug('and dumped them to {ln} characters of data'.format(ln=len(data)))
+            rdebug('and dumped them to {ln} characters of data'
+                   .format(ln=len(data)))
 
             global datafile
             rdebug('about to write {df}'.format(df=datafile))
@@ -155,7 +172,8 @@ def collect():
                 rdebug('done writing to the file, it seems')
             rdebug('about to check the size of the collect file')
             st = os.stat(datafile)
-            rdebug('it seems we wrote {ln} bytes to the file'.format(ln=st.st_size))
+            rdebug('it seems we wrote {ln} bytes to the file'
+                   .format(ln=st.st_size))
 
             rdebug('we seem to be done here!')
             reactive.set_state('storpool-inventory.collected')
@@ -192,11 +210,14 @@ def try_to_submit():
         rdebug('about to read {df}'.format(df=datafile))
         with open(datafile, mode='r', encoding='latin1') as f:
             contents = ''.join(f.readlines())
-        rdebug('read {ln} characters of data from the collect file'.format(ln=len(contents)))
+        rdebug('read {ln} characters of data from the collect file'
+               .format(ln=len(contents)))
         data = json.dumps({'filename': platform.node(), 'contents': contents})
-        rdebug('encoded stuff into {ln} characters of data to submit'.format(ln=len(data)))
+        rdebug('encoded stuff into {ln} characters of data to submit'
+               .format(ln=len(data)))
         data_enc = data.encode('latin1')
-        rdebug('submitting {ln} bytes of data to {url}'.format(ln=len(data_enc), url=url))
+        rdebug('submitting {ln} bytes of data to {url}'
+               .format(ln=len(data_enc), url=url))
         with urllib.request.urlopen(url, data=data_enc) as resp:
             rdebug('got some kind of an HTTP response')
             code = resp.getcode()
@@ -207,7 +228,8 @@ def try_to_submit():
                 hookenv.status_set('active', 'here, have a blob of data')
     except Exception as e:
         rdebug('could not submit the data: {e}'.format(e=e))
-        hookenv.status_set('maintenance', 'failed to submit the collected data')
+        hookenv.status_set('maintenance',
+                           'failed to submit the collected data')
 
 
 @reactive.hook('update-status')
