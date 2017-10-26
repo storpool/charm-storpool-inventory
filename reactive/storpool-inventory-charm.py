@@ -18,6 +18,7 @@ from charms.reactive import helpers as rhelpers
 from charmhelpers.core import hookenv
 
 from spcharms import repo as sprepo
+from spcharms import status as spstatus
 from spcharms import utils as sputils
 
 datadir = '/var/lib/storpool'
@@ -63,7 +64,7 @@ def first_install():
     reactive.remove_state('storpool-inventory.collected')
     reactive.set_state('storpool-inventory.submitting')
     reactive.remove_state('storpool-inventory.submitted')
-    hookenv.status_set('maintenance', 'setting up')
+    spstatus.npset('maintenance', 'setting up')
 
 
 @reactive.hook('config-changed')
@@ -79,6 +80,7 @@ def have_config():
     if url is not None:
         if config.changed('submit_url') or \
            not rhelpers.is_state('storpool-inventory.configured'):
+            spstatus.reset()
             reactive.set_state('storpool-inventory.configured')
             rdebug('we have a new submission URL address: {url}'
                    .format(url=url))
@@ -88,12 +90,12 @@ def have_config():
             if not rhelpers.is_state('storpool-inventory.collected') and \
                not rhelpers.is_state('storpool-inventory.collecting'):
                 rdebug('triggering another collection attempt')
-                hookenv.status_set('maintenance',
-                                   'about to try to collect data again')
+                spstatus.npset('maintenance',
+                               'about to try to collect data again')
                 reactive.set_state('storpool-inventory.collecting')
             else:
-                hookenv.status_set('maintenance',
-                                   'about to resubmit any collected data')
+                spstatus.npset('maintenance',
+                               'about to resubmit any collected data')
         else:
             rdebug('the submission URL address seems to be the same as before')
     else:
@@ -101,7 +103,8 @@ def have_config():
         reactive.remove_state('storpool-inventory.configured')
         reactive.remove_state('storpool-inventory.submitting')
         reactive.remove_state('storpool-inventory.submitted')
-        hookenv.status_set('maintenance', 'waiting for configuration')
+        spstatus.reset()
+        spstatus.npset('maintenance', 'waiting for configuration')
 
 
 @reactive.when('storpool-inventory.collecting')
@@ -111,11 +114,11 @@ def collect():
     Generate and run a shell script invoking various system tools to
     collect some information.
     """
+    spstatus.reset()
     rdebug('about to collect some data, are we not')
     reactive.remove_state('storpool-inventory.collecting')
 
-    hookenv.status_set('maintenance',
-                       'installing packages for data collection')
+    spstatus.npset('maintenance', 'installing packages for data collection')
     try:
         (err, newly_installed) = sprepo.install_packages({
             'dmidecode': '*',
@@ -132,13 +135,12 @@ def collect():
         else:
             rdebug('it seems we already had everything we needed')
         sprepo.record_packages('storpool-inventory-charm', newly_installed)
-        hookenv.status_set('maintenance', '')
+        spstatus.npset('maintenance', '')
     except Exception as e:
-        rdebug('could not install the OS packages: {e}'.format(e=e))
-        hookenv.status_set('maintenance', 'failed to install the OS packages')
+        sputils.err('failed to install the OS packages')
         return
 
-    hookenv.status_set('maintenance', 'collecting data')
+    spstatus.npset('maintenance', 'collecting data')
     try:
         with tempfile.TemporaryDirectory(dir='/tmp',
                                          prefix='storpool-inventory.') as d:
@@ -196,10 +198,10 @@ def collect():
 
             rdebug('we seem to be done here!')
             reactive.set_state('storpool-inventory.collected')
-            hookenv.status_set('maintenance', '')
+            spstatus.npset('maintenance', '')
     except Exception as e:
         rdebug('something bad happened: {e}'.format(e=e))
-        hookenv.status_set('maintenance', 'failed to collect the data')
+        sputils.err('maintenance', 'failed to collect the data')
 
 
 @reactive.when_not('storpool-inventory.configured')
@@ -229,7 +231,7 @@ def try_to_submit():
         rdebug('erm, how did we get here with no submit URL?')
         return
 
-    hookenv.status_set('maintenance', 'submitting the collected data')
+    spstatus.npset('maintenance', 'submitting the collected data')
     try:
         global datafile
         rdebug('about to read {df}'.format(df=datafile))
@@ -250,11 +252,10 @@ def try_to_submit():
             if code is not None and code >= 200 and code < 300:
                 rdebug('success!')
                 reactive.set_state('storpool-inventory.submitted')
-                hookenv.status_set('active', 'here, have a blob of data')
+                spstatus.set('active', 'here, have a blob of data')
     except Exception as e:
         rdebug('could not submit the data: {e}'.format(e=e))
-        hookenv.status_set('maintenance',
-                           'failed to submit the collected data')
+        sputils.err('failed to submit the collected data')
 
 
 @reactive.hook('update-status')
@@ -266,12 +267,14 @@ def submit_if_needed():
 
     if not rhelpers.is_state('storpool-inventory.collected'):
         rdebug('triggering a new collection attempt')
+        spstatus.reset()
         reactive.set_state('storpool-inventory.collecting')
     else:
         rdebug('already collected!')
 
     if not rhelpers.is_state('storpool-inventory.submitted'):
         rdebug('triggering a new submission attempt')
+        spstatus.reset()
         reactive.set_state('storpool-inventory.submitting')
     else:
         rdebug('already submitted!')
@@ -283,6 +286,7 @@ def recollect_and_resubmit():
     On charm upgrade, note that we need to collect and submit the data.
     """
     rdebug('upgrade-charm invoked, resetting all the flags')
+    spstatus.reset()
     reactive.set_state('storpool-inventory.collecting')
     reactive.remove_state('storpool-inventory.collected')
     reactive.set_state('storpool-inventory.submitting')
@@ -295,6 +299,7 @@ def stop():
     """
     Clean up upon unit removal.
     """
+    spstatus.reset()
     rdebug('and also removing the file with the collected data')
     try:
         os.unlink(datafile)
