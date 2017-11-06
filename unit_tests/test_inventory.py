@@ -169,6 +169,11 @@ class TestInventory(unittest.TestCase):
         testee.have_config()
         self.assertEquals(set(), r_state.r_get_states())
 
+        r_state.r_set_states(states['weird'])
+        r_config.r_set('submit_url', '', True)
+        testee.have_config()
+        self.assertEquals(set(), r_state.r_get_states())
+
         # Let's give it an URL, but make it seem the same as before
         r_state.r_set_states(states['weird'])
         r_config.r_set('submit_url', 'something', False)

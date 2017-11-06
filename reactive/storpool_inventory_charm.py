@@ -77,7 +77,7 @@ def have_config():
     config = hookenv.config()
 
     url = config.get('submit_url', None)
-    if url is not None:
+    if url is not None and url != '':
         if config.changed('submit_url') or \
            not rhelpers.is_state('storpool-inventory.configured'):
             spstatus.reset()
