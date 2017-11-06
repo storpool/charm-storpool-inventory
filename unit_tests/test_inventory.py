@@ -6,7 +6,7 @@ A set of unit tests for the storpool-inventory charm.
 
 import os
 import sys
-import testtools
+import unittest
 
 import json
 import mock
@@ -108,7 +108,7 @@ def mock_reactive_states(f):
 from reactive import storpool_inventory_charm as testee
 
 
-class TestInventory(testtools.TestCase):
+class TestInventory(unittest.TestCase):
     def setUp(self):
         super(TestInventory, self).setUp()
         r_state.r_clear_states()
